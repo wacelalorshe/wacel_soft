@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام محاسبة المتاجر</title>
+    <style>
+        body { 
+            font-family: Arial, Tahoma, sans-serif; 
+            text-align: center; 
+            padding: 20px;
+            direction: rtl;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            min-height: 100vh;
+        }
+        .container { 
+            max-width: 800px; 
+            margin: 0 auto; 
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .product { 
+            background: #f8f9fa; 
+            padding: 20px; 
+            margin: 15px; 
+            border-radius: 10px;
+            border-right: 5px solid #667eea;
+            transition: transform 0.3s ease;
+        }
+        .product:hover {
+            transform: translateY(-5px);
+        }
+        button {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #218838;
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏪 نظام محاسبة المتاجر - النسخة المبسطة</h1>
+        <p style="color: #666; margin-bottom: 30px;">هذه نسخة مبسطة تعمل مباشرة في المتصفح</p>
+        
+        <div class="product">
+            <h3>💻 لابتوب ديل</h3>
+            <p>السعر: 1,500 ريال</p>
+            <p>الكمية المتاحة: 10</p>
+            <button onclick="addToCart('لابتوب ديل', 1500)">إضافة للبيع</button>
+        </div>
+        
+        <div class="product">
+            <h3>📱 هاتف سامسونج</h3>
+            <p>السعر: 800 ريال</p>
+            <p>الكمية المتاحة: 15</p>
+            <button onclick="addToCart('هاتف سامسونج', 800)">إضافة للبيع</button>
+        </div>
+        
+        <div class="product">
+            <h3>🖨ة طابعة كانون</h3>
+            <p>السعر: 400 ريال</p>
+            <p>الكمية المتاحة: 8</p>
+            <button onclick="addToCart('طابعة كانون', 400)">إضافة للبيع</button>
+        </div>
+        
+        <div style="margin-top: 30px; padding: 20px; background: #e9ecef; border-radius: 10px;">
+            <h3>🛒 سلة المشتريات</h3>
+            <div id="cart"></div>
+            <button onclick="checkout()" style="background: #dc3545; margin-top: 10px;">إتمام البيع</button>
+        </div>
+    </div>
+
+    <script>
+        let cart = [];
+        
+        function addToCart(productName, price) {
+            cart.push({name: productName, price: price});
+            updateCartDisplay();
+            alert('تم إضافة ' + productName + ' إلى السلة');
+        }
+        
+        function updateCartDisplay() {
+            const cartElement = document.getElementById('cart');
+            if (cart.length === 0) {
+                cartElement.innerHTML = '<p>السلة فارغة</p>';
+            } else {
+                let total = 0;
+                let cartHTML = '<ul style="text-align: right; list-style: none; padding: 0;">';
+                
+                cart.forEach(item => {
+                    cartHTML += `<li>${item.name} - ${item.price} ريال</li>`;
+                    total += item.price;
+                });
+                
+                cartHTML += `</ul><p style="font-weight: bold; margin-top: 10px;">المجموع: ${total} ريال</p>`;
+                cartElement.innerHTML = cartHTML;
+            }
+        }
+        
+        function checkout() {
+            if (cart.length === 0) {
+                alert('السلة فارغة! أضف منتجات أولاً');
+                return;
+            }
+            
+            let total = cart.reduce((sum, item) => sum + item.price, 0);
+            alert(`تم إتمام البيع بنجاح!\nإجمالي المبلغ: ${total} ريال\nشكراً لاستخدامك النظام`);
+            cart = [];
+            updateCartDisplay();
+        }
+        
+        // تهيئة السلة عند التحميل
+        updateCartDisplay();
+    </script>
+</body>
+</html>
