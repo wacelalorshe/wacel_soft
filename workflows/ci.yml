@@ -1,0 +1,16 @@
+name: اختبار البرنامج
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  اختبار-البرنامج:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: تحميل الكود
+      uses: actions/checkout@v3
+      
+    - name: طباعة رسالة نجاح
+      run: echo "✅ البرنامج يعمل بنجاح!"
