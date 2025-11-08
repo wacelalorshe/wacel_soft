@@ -1,3 +1,23 @@
+
+from fastapi import FastAPI
+
+app = FastAPI(
+    title="نظام محاسبة المتاجر",
+    description="""
+    نظام محاسبة بسيط وسهل للمتاجر الصغيرة
+    
+    المميزات:
+    - إدارة المنتجات
+    - تسجيل المبيعات
+    - تقارير مالية
+    """,
+    version="1.0.0"
+)
+
+@app.get("/")
+def الرئيسية():
+    return {"رسالة": "مرحبا بك في نظام المحاسبة"}
+
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
