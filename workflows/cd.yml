@@ -1,0 +1,16 @@
+name: نشر البرنامج
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  نشر-البرنامج:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: تحميل الكود
+      uses: actions/checkout@v3
+      
+    - name: تأكيد النشر
+      run: echo "🚀 البرنامج جاهز للنشر!"
