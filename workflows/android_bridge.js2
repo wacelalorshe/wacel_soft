@@ -1,0 +1,80 @@
+// android_bridge.js - جسر التواصل بين JavaScript و Android WebView
+(function() {
+    // تعريف AppBridge إذا لم يكن موجوداً
+    if (typeof window.AppBridge === 'undefined') {
+        window.AppBridge = {
+            hasNative: false,
+            
+            hasNativeFunc: function() {
+                return typeof window.AppBridge._nativePrint !== 'undefined' || 
+                       typeof window.AndroidPrint !== 'undefined';
+            },
+            
+            print: function() {
+                if (typeof window.AndroidPrint !== 'undefined' && window.AndroidPrint.printCurrentPage) {
+                    window.AndroidPrint.printCurrentPage();
+                    return true;
+                }
+                if (window.AppBridge._nativePrint) {
+                    window.AppBridge._nativePrint();
+                    return true;
+                }
+                window.print();
+                return false;
+            },
+            
+            saveImage: function(base64, fileName) {
+                // محاولة استخدام AndroidPrint
+                if (typeof window.AndroidPrint !== 'undefined' && window.AndroidPrint.saveBase64File) {
+                    window.AndroidPrint.saveBase64File(base64, fileName);
+                    return true;
+                }
+                // محاولة استخدام AppBridge الأصلي
+                if (typeof window.AppBridge._saveImage === 'function') {
+                    window.AppBridge._saveImage(base64, fileName);
+                    return true;
+                }
+                // طريقة احتياطية - تحميل مباشر
+                var a = document.createElement('a');
+                a.href = base64;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(function() { document.body.removeChild(a); }, 100);
+                return true;
+            },
+            
+            shareText: function(text) {
+                if (typeof window.AppBridge._shareText === 'function') {
+                    window.AppBridge._shareText(text);
+                    return true;
+                }
+                window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+                return true;
+            },
+            
+            showToast: function(msg) {
+                if (typeof window.AppBridge._showToast === 'function') {
+                    window.AppBridge._showToast(msg);
+                    return;
+                }
+                var toast = document.createElement('div');
+                toast.style.cssText = 'position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:10px 20px;border-radius:20px;z-index:9999;font-size:14px;';
+                toast.textContent = msg;
+                document.body.appendChild(toast);
+                setTimeout(function() { toast.remove(); }, 2000);
+            }
+        };
+    }
+    
+    // تصدير للاستخدام العام
+    window.downloadFileToDevice = function(base64, fileName) {
+        window.AppBridge.saveImage(base64, fileName);
+    };
+    
+    window.printDocument = function() {
+        window.AppBridge.print();
+    };
+    
+    console.log('✅ Android Bridge initialized');
+})();
