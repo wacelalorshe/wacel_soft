@@ -1,0 +1,131 @@
+/**
+ * Service Worker - دفتر الحسابات
+ * يدعم التحديث التلقائي عند وجود نسخة جديدة
+ */
+const CACHE_NAME = 'finance-app-v3';
+const OFFLINE_PAGE = '/offline.html';
+const APP_VERSION = '3.0.0';
+
+// الملفات التي سيتم تخزينها
+const ASSETS_TO_CACHE = [
+  '/',
+  '/index.php',
+  '/login.php',
+  '/client.php',
+  '/statement.php',
+  '/settings.php',
+  '/add_partner.php',
+  '/add_transaction.php',
+  '/register.php',
+  '/offline.html',
+  '/manifest.json',
+  '/js/db.js',
+  '/js/sync.js',
+  'https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap',
+];
+
+// تثبيت Service Worker
+self.addEventListener('install', (event) => {
+  console.log(`🔧 Service Worker v${APP_VERSION}: تثبيت...`);
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      console.log('📦 تخزين الملفات...');
+      return Promise.all(
+        ASSETS_TO_CACHE.map(url => cache.add(url).catch(err => {
+          console.warn('⚠️ فشل تخزين:', url);
+        }))
+      );
+    }).then(() => {
+      console.log('✅ تم التثبيت، تفعيل التخطي...');
+      return self.skipWaiting(); // تفعيل فوري بدون انتظار
+    })
+  );
+});
+
+// تفعيل Service Worker
+self.addEventListener('activate', (event) => {
+  console.log(`🚀 Service Worker v${APP_VERSION}: تفعيل`);
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames
+          .filter((name) => name !== CACHE_NAME)
+          .map((name) => {
+            console.log('🗑️ حذف الكاش القديم:', name);
+            return caches.delete(name);
+          })
+      );
+    }).then(() => {
+      // السيطرة على جميع العملاء فوراً
+      return self.clients.claim();
+    }).then(() => {
+      // إشعار جميع النوافذ المفتوحة بوجود تحديث
+      self.clients.matchAll().then(clients => {
+        clients.forEach(client => {
+          client.postMessage({
+            type: 'SW_UPDATED',
+            version: APP_VERSION
+          });
+        });
+      });
+    })
+  );
+});
+
+// استراتيجية: Network First (الشبكة أولاً) للمحتوى الديناميكي
+self.addEventListener('fetch', (event) => {
+  // تجاهل طلبات API
+  if (event.request.url.includes('/api/') || 
+      event.request.url.includes('sync.php') ||
+      event.request.method !== 'GET') {
+    return;
+  }
+
+  event.respondWith(
+    fetch(event.request)
+      .then((response) => {
+        // تحديث الكاش بالنسخة الجديدة
+        if (response && response.status === 200) {
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseClone);
+          });
+        }
+        return response;
+      })
+      .catch(() => {
+        // إذا فشلت الشبكة، استخدم الكاش
+        return caches.match(event.request).then((cachedResponse) => {
+          if (cachedResponse) {
+            return cachedResponse;
+          }
+          if (event.request.headers.get('accept')?.includes('text/html')) {
+            return caches.match(OFFLINE_PAGE);
+          }
+          return new Response('غير متصل', { status: 503 });
+        });
+      })
+  );
+});
+
+// استقبال رسائل من التطبيق
+self.addEventListener('message', (event) => {
+  if (event.data === 'skipWaiting') {
+    self.skipWaiting();
+  }
+  
+  if (event.data === 'clearCache') {
+    caches.delete(CACHE_NAME).then(() => {
+      console.log('🗑️ تم مسح الكاش');
+      self.clients.matchAll().then(clients => {
+        clients.forEach(client => {
+          client.postMessage({ type: 'CACHE_CLEARED' });
+        });
+      });
+    });
+  }
+  
+  if (event.data === 'getVersion') {
+    event.ports[0].postMessage({ version: APP_VERSION });
+  }
+});

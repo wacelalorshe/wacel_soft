@@ -1,0 +1,141 @@
+const CACHE_NAME = 'finance-app-v5';
+const DYNAMIC_CACHE = 'finance-dynamic-v1';
+
+const STATIC_ASSETS = [
+  '/wacel1/',
+  '/wacel1/index.php',
+  '/wacel1/login.php',
+  '/wacel1/register.php',
+  '/wacel1/offline.html',
+  '/wacel1/manifest.json',
+  '/wacel1/js/db.js',
+  '/wacel1/js/sync.js',
+];
+
+self.addEventListener('install', (event) => {
+  console.log('SW: Installing...');
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      console.log('SW: Caching core assets...');
+      return Promise.allSettled(
+        STATIC_ASSETS.map(url => cache.add(url).catch(err => console.warn('Failed to cache:', url, err)))
+      );
+    }).then(() => self.skipWaiting())
+  );
+});
+
+self.addEventListener('activate', (event) => {
+  console.log('SW: Activating...');
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.filter(name => name !== CACHE_NAME && name !== DYNAMIC_CACHE).map(name => {
+          console.log('SW: Deleting old cache:', name);
+          return caches.delete(name);
+        })
+      );
+    }).then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener('fetch', (event) => {
+  const { request } = event;
+  const url = new URL(request.url);
+
+  if (request.method !== 'GET') return;
+  if (url.protocol === 'chrome-extension:') return;
+
+  // للصفحات الديناميكية (client.php, statement.php, add_transaction.php)
+  if (url.pathname.includes('client.php') || 
+      url.pathname.includes('statement.php') || 
+      url.pathname.includes('add_transaction.php') ||
+      url.pathname.includes('add_partner.php') ||
+      url.pathname.includes('settings.php')) {
+    event.respondWith(networkFirstDynamic(request));
+    return;
+  }
+
+  // للصفحات الثابتة
+  if (request.mode === 'navigate' || request.headers.get('accept')?.includes('text/html')) {
+    event.respondWith(networkFirst(request));
+    return;
+  }
+
+  // للملفات الثابتة
+  if (url.pathname.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|json)$/)) {
+    event.respondWith(cacheFirst(request));
+    return;
+  }
+
+  event.respondWith(networkFirst(request));
+});
+
+// استراتيجية جديدة: Network First مع كاش منفصل وتخزين ديناميكي
+async function networkFirstDynamic(request) {
+  try {
+    const networkResponse = await fetch(request);
+    
+    if (networkResponse && networkResponse.status === 200) {
+      const cache = await caches.open(DYNAMIC_CACHE);
+      // تخزين كل URL بمعاملاته الفريدة
+      cache.put(request, networkResponse.clone());
+    }
+    
+    return networkResponse;
+  } catch (error) {
+    // البحث في الكاش الديناميكي أولاً
+    const cachedResponse = await caches.match(request);
+    if (cachedResponse) {
+      return cachedResponse;
+    }
+    
+    // البحث في الكاش الثابت
+    const staticCached = await caches.match(request);
+    if (staticCached) {
+      return staticCached;
+    }
+    
+    // عرض صفحة Offline
+    const offlinePage = await caches.match('/wacel1/offline.html');
+    if (offlinePage) {
+      return offlinePage;
+    }
+    
+    return new Response('Offline', { status: 503 });
+  }
+}
+
+async function networkFirst(request) {
+  try {
+    const networkResponse = await fetch(request);
+    if (networkResponse && networkResponse.status === 200) {
+      const cache = await caches.open(CACHE_NAME);
+      cache.put(request, networkResponse.clone());
+    }
+    return networkResponse;
+  } catch (error) {
+    const cachedResponse = await caches.match(request);
+    if (cachedResponse) return cachedResponse;
+    
+    if (request.mode === 'navigate') {
+      const offlinePage = await caches.match('/wacel1/offline.html');
+      if (offlinePage) return offlinePage;
+    }
+    return new Response('Offline', { status: 503 });
+  }
+}
+
+async function cacheFirst(request) {
+  const cachedResponse = await caches.match(request);
+  if (cachedResponse) return cachedResponse;
+  try {
+    const networkResponse = await fetch(request);
+    if (networkResponse && networkResponse.status === 200) {
+      const cache = await caches.open(CACHE_NAME);
+      cache.put(request, networkResponse.clone());
+    }
+    return networkResponse;
+  } catch (error) {
+    return new Response('Offline', { status: 503 });
+  }
+}

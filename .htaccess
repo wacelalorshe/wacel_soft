@@ -1,0 +1,11 @@
+# حماية المجلدات
+Options -Indexes
+
+# منع الوصول للملفات الحساسة
+<FilesMatch "^(config\.php|\.env|\.sql)$">
+  Order deny,allow
+  Deny from all
+</FilesMatch>
+
+# إعادة توجيه الأخطاء
+ErrorDocument 404 /404.php

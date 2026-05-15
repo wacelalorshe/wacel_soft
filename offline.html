@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>دفتر الحسابات - بدون إنترنت</title>
+    <meta name="theme-color" content="#0f0f1a">
+    <style>
+        :root {
+            --bg: #0f0f1a;
+            --surface: #1a1a2e;
+            --surface-light: #252540;
+            --primary: #6c5ce7;
+            --success: #00d68f;
+            --danger: #ff6b6b;
+            --warning: #ffd93d;
+            --text: #ffffff;
+            --text-secondary: #8888a0;
+            --border: #2a2a45;
+            --radius: 14px;
+            --radius-sm: 10px;
+            --radius-lg: 18px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            -webkit-tap-highlight-color: transparent;
+            padding-bottom: 80px;
+        }
+        .app { max-width: 500px; margin: 0 auto; min-height: 100vh; }
+        .header {
+            position: sticky; top: 0; z-index: 100;
+            background: rgba(15, 15, 26, 0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            padding: 12px 16px;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .header-icon { font-size: 28px; }
+        .header-info { flex: 1; }
+        .header-title { font-size: 16px; font-weight: 700; }
+        .header-sub { font-size: 10px; color: var(--text-secondary); }
+        .header-badge {
+            background: var(--warning); color: #000; padding: 4px 10px;
+            border-radius: 12px; font-size: 10px; font-weight: 700; display: none;
+            cursor: pointer; margin-left: 4px;
+        }
+        .status-bar {
+            display: flex; align-items: center; gap: 8px;
+            padding: 8px 14px; margin: 8px 14px;
+            border-radius: var(--radius-sm);
+            font-size: 11px; font-weight: 700;
+            background: rgba(255,107,107,0.1);
+            color: var(--danger);
+            border: 1px solid rgba(255,107,107,0.3);
+        }
+        .status-bar.online {
+            background: rgba(0,214,143,0.1);
+            color: var(--success);
+            border: 1px solid rgba(0,214,143,0.3);
+        }
+        .status-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: var(--danger);
+            animation: pulse 2s infinite;
+        }
+        .status-dot.online { background: var(--success); }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+        .tabs {
+            display: flex; gap: 4px; padding: 8px 14px;
+            overflow-x: auto; scrollbar-width: none;
+        }
+        .tabs::-webkit-scrollbar { display: none; }
+        .tab {
+            padding: 8px 16px; border-radius: 20px;
+            border: 1px solid var(--border);
+            background: var(--surface); color: var(--text-secondary);
+            font-weight: 700; font-size: 11px; cursor: pointer;
+            white-space: nowrap; font-family: inherit;
+            transition: all 0.2s;
+        }
+        .tab.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+        .content { padding: 10px 14px; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .stats-grid {
+            display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px;
+        }
+        .stat-card {
+            background: var(--surface); border-radius: var(--radius);
+            padding: 14px 8px; text-align: center; border: 1px solid var(--border);
+        }
+        .stat-val { font-size: 18px; font-weight: 800; }
+        .stat-lbl { font-size: 9px; color: var(--text-secondary); margin-top: 3px; }
+        .stat-val.red { color: var(--danger); }
+        .stat-val.green { color: var(--success); }
+        .section-title {
+            font-size: 12px; font-weight: 700; color: var(--text-secondary);
+            margin-bottom: 8px; text-transform: uppercase;
+        }
+        .client-card {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: var(--radius-lg); padding: 14px 16px;
+            margin-bottom: 8px; cursor: pointer;
+            display: flex; align-items: center; gap: 12px;
+            transition: all 0.2s;
+        }
+        .client-card:active { transform: scale(0.98); background: var(--surface-light); }
+        .client-avatar {
+            width: 44px; height: 44px; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 18px; flex-shrink: 0;
+        }
+        .client-info { flex: 1; min-width: 0; }
+        .client-name { font-size: 14px; font-weight: 600; }
+        .client-meta { font-size: 10px; color: var(--text-secondary); margin-top: 2px; }
+        .client-balance { text-align: left; flex-shrink: 0; }
+        .balance-amount { font-size: 16px; font-weight: 700; }
+        .balance-amount.positive { color: var(--success); }
+        .balance-amount.negative { color: var(--danger); }
+        .balance-label { font-size: 10px; color: var(--text-secondary); }
+        .form-group { margin-bottom: 12px; }
+        .form-label {
+            display: block; font-size: 11px; font-weight: 600;
+            color: var(--text-secondary); margin-bottom: 4px;
+        }
+        .form-input {
+            width: 100%; padding: 12px 14px;
+            background: var(--surface-light); border: 1.5px solid var(--border);
+            border-radius: var(--radius-sm); color: var(--text);
+            font-size: 14px; font-family: inherit;
+        }
+        .form-input:focus { outline: none; border-color: var(--primary); }
+        .form-input.big { font-size: 22px; font-weight: 700; text-align: center; }
+        select.form-input {
+            appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M6 8L1 3h10z' fill='%23888'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: left 12px center;
+        }
+        .type-toggle { display: flex; gap: 6px; }
+        .type-btn {
+            flex: 1; padding: 11px; border-radius: 10px;
+            border: 2px solid var(--border); background: transparent;
+            color: var(--text-secondary); font-weight: 700; font-size: 13px;
+            cursor: pointer; font-family: inherit;
+        }
+        .type-btn.debit.active { background: var(--danger); border-color: var(--danger); color: #fff; }
+        .type-btn.credit.active { background: var(--success); border-color: var(--success); color: #fff; }
+        .btn-row { display: flex; gap: 8px; margin-top: 16px; }
+        .btn {
+            flex: 1; padding: 13px; border-radius: var(--radius-sm);
+            font-weight: 700; font-size: 13px; cursor: pointer;
+            border: none; font-family: inherit; transition: all 0.2s;
+        }
+        .btn:active { transform: scale(0.96); }
+        .btn-cancel { background: var(--surface-light); color: var(--text); border: 1px solid var(--border); }
+        .btn-save { background: var(--primary); color: #fff; }
+        .btn-success { background: var(--success); color: #fff; }
+        .btn-warning { background: var(--warning); color: #000; }
+        .back-row {
+            display: flex; align-items: center; gap: 8px;
+            padding: 10px 14px; cursor: pointer; color: var(--primary);
+            font-weight: 600; font-size: 13px;
+        }
+        .client-header {
+            text-align: center; padding: 16px;
+            background: var(--surface); border-radius: var(--radius-lg);
+            margin-bottom: 12px; border: 1px solid var(--border);
+        }
+        .client-header .big-balance {
+            font-size: 36px; font-weight: 800; margin: 8px 0;
+        }
+        .tx-item {
+            display: flex; align-items: center; gap: 10px;
+            padding: 12px; background: var(--surface);
+            border-radius: var(--radius-sm); margin-bottom: 6px;
+            border: 1px solid var(--border);
+        }
+        .tx-icon {
+            width: 34px; height: 34px; border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 14px; flex-shrink: 0;
+        }
+        .tx-icon.debit { background: rgba(255,107,107,0.1); color: var(--danger); }
+        .tx-icon.credit { background: rgba(0,214,143,0.1); color: var(--success); }
+        .tx-info { flex: 1; }
+        .tx-details { font-size: 13px; font-weight: 500; }
+        .tx-date { font-size: 10px; color: var(--text-secondary); }
+        .tx-amount { font-size: 15px; font-weight: 700; }
+        .tx-amount.debit { color: var(--danger); }
+        .tx-amount.credit { color: var(--success); }
+        .toast {
+            position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%);
+            padding: 10px 20px; border-radius: 20px;
+            color: #fff; font-weight: 600; font-size: 12px;
+            z-index: 400; white-space: nowrap;
+            animation: toastIn 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+        .toast.success { background: var(--success); }
+        .toast.error { background: var(--danger); }
+        .toast.warning { background: #ffa502; }
+        @keyframes toastIn { from{opacity:0;transform:translateX(-50%) translateY(10px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
+        @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+        @keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+        .empty-state { text-align: center; padding: 30px; color: var(--text-secondary); }
+        .empty-icon { font-size: 50px; margin-bottom: 8px; }
+        .sync-bar {
+            padding: 8px 14px; margin: 8px 14px;
+            background: rgba(255,165,2,0.1); border: 1px solid rgba(255,165,2,0.3);
+            border-radius: var(--radius-sm); color: var(--warning);
+            font-size: 11px; font-weight: 700; text-align: center;
+            display: none;
+        }
+        .sync-bar.show { display: block; }
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(4px); z-index: 300;
+            display: flex; align-items: flex-end; justify-content: center;
+            animation: fadeIn 0.2s ease;
+        }
+        .modal-overlay.hidden { display: none; }
+        .modal-sheet {
+            background: var(--surface); width: 100%; max-width: 500px;
+            border-radius: 22px 22px 0 0; padding: 12px 20px 24px;
+            max-height: 90vh; overflow-y: auto;
+            animation: slideUp 0.3s ease;
+        }
+        .modal-handle {
+            width: 36px; height: 4px; background: var(--border);
+            border-radius: 2px; margin: 0 auto 14px;
+        }
+        .modal-title {
+            font-size: 17px; font-weight: 700; text-align: center; margin-bottom: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="app" id="app">
+        <!-- الهيدر -->
+        <div class="header">
+            <span class="header-icon">💳</span>
+            <div class="header-info">
+                <div class="header-title">دفتر الحسابات</div>
+                <div class="header-sub" id="headerSub">وضع Offline</div>
+            </div>
+            <span class="header-badge" id="queueBadge" onclick="syncNow()">0</span>
+        </div>
+
+        <!-- شريط الحالة -->
+        <div class="status-bar" id="statusBar">
+            <span class="status-dot" id="statusDot"></span>
+            <span id="statusText">غير متصل بالإنترنت</span>
+            <button class="btn btn-warning" style="margin-right:auto;padding:5px 12px;font-size:10px;" onclick="syncNow()">🔄 مزامنة</button>
+        </div>
+
+        <!-- شريط المزامنة -->
+        <div class="sync-bar" id="syncBar">
+            📤 <span id="syncCount">0</span> عملية في انتظار المزامنة
+        </div>
+
+        <!-- التبويبات -->
+        <div class="tabs" id="mainTabs">
+            <button class="tab active" data-tab="home">🏠 الرئيسية</button>
+            <button class="tab" data-tab="addPartner">👤 إضافة عميل</button>
+            <button class="tab" data-tab="addTx">💰 إضافة معاملة</button>
+        </div>
+
+        <!-- المحتوى -->
+        <div class="content">
+            <!-- الرئيسية -->
+            <div class="tab-content active" id="tab-home">
+                <div class="stats-grid">
+                    <div class="stat-card"><div class="stat-val" id="statClients">0</div><div class="stat-lbl">عميل</div></div>
+                    <div class="stat-card"><div class="stat-val red" id="statDebit">0</div><div class="stat-lbl">عليك</div></div>
+                    <div class="stat-card"><div class="stat-val green" id="statCredit">0</div><div class="stat-lbl">لك</div></div>
+                </div>
+                <div class="section-title">👥 العملاء</div>
+                <div id="clientsList"><div class="empty-state"><div class="empty-icon">📭</div><div>لا يوجد عملاء بعد</div></div></div>
+            </div>
+
+            <!-- إضافة عميل -->
+            <div class="tab-content" id="tab-addPartner">
+                <div class="section-title" style="margin-bottom:12px;">👤 إضافة عميل جديد</div>
+                <div class="form-group"><label class="form-label">اسم العميل *</label><input type="text" class="form-input" id="partnerName" placeholder="أدخل اسم العميل"></div>
+                <div class="form-group"><label class="form-label">رقم الهاتف</label><input type="tel" class="form-input" id="partnerPhone" placeholder="777123456" dir="ltr"></div>
+                <button class="btn btn-success" style="width:100%;" onclick="addPartner()">💾 حفظ العميل</button>
+            </div>
+
+            <!-- إضافة معاملة -->
+            <div class="tab-content" id="tab-addTx">
+                <div class="section-title" style="margin-bottom:12px;">💰 إضافة معاملة جديدة</div>
+                <div class="form-group"><label class="form-label">العميل *</label><select class="form-input" id="txPartner"><option value="">اختر العميل...</option></select></div>
+                <div class="form-group"><label class="form-label">النوع</label>
+                    <div class="type-toggle">
+                        <button class="type-btn debit active" onclick="setTxType('debit', this)">📤 عليه</button>
+                        <button class="type-btn credit" onclick="setTxType('credit', this)">📥 له</button>
+                    </div>
+                </div>
+                <div class="form-group"><label class="form-label">المبلغ *</label><input type="number" class="form-input big" id="txAmount" placeholder="0" min="1"></div>
+                <div class="form-group"><label class="form-label">التفاصيل</label><input type="text" class="form-input" id="txDetails" placeholder="مثال: حق ماء..."></div>
+                <div class="form-group"><label class="form-label">التاريخ</label><input type="date" class="form-input" id="txDate"></div>
+                <button class="btn btn-save" style="width:100%;" onclick="saveTransaction()">💾 حفظ المعاملة</button>
+            </div>
+        </div>
+
+        <!-- صفحة العميل -->
+        <div id="clientPage" style="display:none;">
+            <div class="back-row" onclick="goBack()">← رجوع للقائمة</div>
+            <div class="client-header" id="clientHeader"></div>
+            <div class="content">
+                <button class="btn btn-save" style="width:100%;margin-bottom:12px;" onclick="showAddTxForClient()">➕ إضافة معاملة</button>
+                <div class="section-title">📋 المعاملات</div>
+                <div id="clientTxList"></div>
+            </div>
+        </div>
+
+        <!-- مودال إضافة معاملة لعميل -->
+        <div class="modal-overlay hidden" id="txModal" onclick="closeModal(event)">
+            <div class="modal-sheet" onclick="event.stopPropagation()">
+                <div class="modal-handle"></div>
+                <div class="modal-title">💰 إضافة معاملة</div>
+                <div class="form-group"><label class="form-label">النوع</label>
+                    <div class="type-toggle">
+                        <button class="type-btn debit active" onclick="setModalTxType('debit', this)">📤 عليه</button>
+                        <button class="type-btn credit" onclick="setModalTxType('credit', this)">📥 له</button>
+                    </div>
+                </div>
+                <div class="form-group"><label class="form-label">المبلغ *</label><input type="number" class="form-input big" id="modalTxAmount" placeholder="0" min="1"></div>
+                <div class="form-group"><label class="form-label">التفاصيل</label><input type="text" class="form-input" id="modalTxDetails" placeholder="تفاصيل المعاملة..."></div>
+                <div class="form-group"><label class="form-label">التاريخ</label><input type="date" class="form-input" id="modalTxDate"></div>
+                <div class="btn-row">
+                    <button class="btn btn-cancel" onclick="closeModal()">إلغاء</button>
+                    <button class="btn btn-save" onclick="saveClientTransaction()">💾 حفظ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // ==================== IndexedDB ====================
+    var localDB = {
+        dbName: 'FinanceAppDB', dbVersion: 3, db: null,
+        open: function() {
+            var self = this;
+            if (self.db) return Promise.resolve(self.db);
+            return new Promise(function(resolve, reject) {
+                var request = indexedDB.open(self.dbName, self.dbVersion);
+                request.onupgradeneeded = function(event) {
+                    var db = event.target.result;
+                    if (!db.objectStoreNames.contains('partners')) {
+                        var store = db.createObjectStore('partners', { keyPath: 'id', autoIncrement: true });
+                        store.createIndex('name', 'name', { unique: false });
+                    }
+                    if (!db.objectStoreNames.contains('transactions')) {
+                        var txStore = db.createObjectStore('transactions', { keyPath: 'localId', autoIncrement: true });
+                        txStore.createIndex('partner_id', 'partner_id', { unique: false });
+                    }
+                    if (!db.objectStoreNames.contains('sync_queue')) {
+                        db.createObjectStore('sync_queue', { keyPath: 'id', autoIncrement: true });
+                    }
+                };
+                request.onsuccess = function(e) { self.db = e.target.result; resolve(self.db); };
+                request.onerror = function(e) { reject(e.target.error); };
+            });
+        },
+        addPartner: function(data) {
+            var self = this;
+            return self.open().then(function() {
+                return new Promise(function(resolve, reject) {
+                    var tx = self.db.transaction('partners', 'readwrite');
+                    var store = tx.objectStore('partners');
+                    var record = { name: data.name, phone: data.phone || '', type: data.type || 'local', status: 'active', balance: 0, transaction_count: 0, synced: 0, user_id: data.user_id || 0, createdAt: new Date().toISOString() };
+                    var req = store.add(record);
+                    req.onsuccess = function() {
+                        var id = req.result;
+                        self.addToSyncQueue('partner_add', { name: data.name, phone: data.phone || '', type: data.type || 'local', id: id, user_id: parseInt(localStorage.getItem('offline_user_id') || '0') });
+                        resolve({ id: id, name: data.name, phone: data.phone || '', balance: 0, transaction_count: 0 });
+                    };
+                    req.onerror = function() { reject(req.error); };
+                });
+            });
+        },
+        getPartners: function() {
+            var self = this;
+            return self.open().then(function() {
+                return new Promise(function(resolve, reject) {
+                    var tx = self.db.transaction('partners', 'readonly');
+                    var req = tx.objectStore('partners').getAll();
+                    req.onsuccess = function() { resolve(req.result || []); };
+                    req.onerror = function() { reject(req.error); };
+                });
+            });
+        },
+        getPartnerById: function(id) {
+            var self = this;
+            return self.open().then(function() {
+                return new Promise(function(resolve, reject) {
+                    var tx = self.db.transaction('partners', 'readonly');
+                    var req = tx.objectStore('partners').get(id);
+                    req.onsuccess = function() { resolve(req.result || null); };
+                    req.onerror = function() { reject(req.error); };
+                });
+            });
+        },
+        addTransaction: function(data) {
+            var self = this;
+            return self.open().then(function() {
+                return new Promise(function(resolve, reject) {
+                    var tx = self.db.transaction('transactions', 'readwrite');
+                    var store = tx.objectStore('transactions');
+                    var record = { partner_id: data.partner_id, date: data.date || new Date().toISOString().split('T')[0], details: data.details || '', amount: parseFloat(data.amount) || 0, currency_type: data.currency_type || 'local', transaction_type: data.transaction_type || 'debit', synced: 0, user_id: data.user_id || 0, createdAt: new Date().toISOString() };
+                    var req = store.add(record);
+                    req.onsuccess = function() {
+                        var localId = req.result;
+                        self.addToSyncQueue('transaction_add', { partner_id: data.partner_id, amount: parseFloat(data.amount), details: data.details || '', date: data.date, transaction_type: data.transaction_type, currency_type: data.currency_type || 'local', localId: localId, user_id: parseInt(localStorage.getItem('offline_user_id') || '0') });
+                        self.updatePartnerBalance(data.partner_id);
+                        resolve({ localId: localId });
+                    };
+                    req.onerror = function() { reject(req.error); };
+                });
+            });
+        },
+        getTransactions: function(partnerId) {
+            var self = this;
+            return self.open().then(function() {
+                return new Promise(function(resolve, reject) {
+                    var tx = self.db.transaction('transactions', 'readonly');
+                    var index = tx.objectStore('transactions').index('partner_id');
+                    var req = index.getAll(partnerId);
+                    req.onsuccess = function() { resolve(req.result || []); };
+                    req.onerror = function() { reject(req.error); };
+                });
+            });
+        },
+        updatePartnerBalance: function(partnerId) {
+            var self = this;
+            self.getTransactions(partnerId).then(function(transactions) {
+                var balance = 0;
+                transactions.forEach(function(t) { balance += t.transaction_type === 'credit' ? parseFloat(t.amount) : -parseFloat(t.amount); });
+                self.getPartnerById(partnerId).then(function(partner) {
+                    if (partner) { partner.balance = balance; partner.transaction_count = transactions.length; var tx = self.db.transaction('partners', 'readwrite'); tx.objectStore('partners').put(partner); }
+                });
+            });
+        },
+        addToSyncQueue: function(action, data) {
+            var self = this;
+            return self.open().then(function() {
+                return new Promise(function(resolve, reject) {
+                    var tx = self.db.transaction('sync_queue', 'readwrite');
+                    var req = tx.objectStore('sync_queue').add({ action: action, data: data, retries: 0, createdAt: new Date().toISOString() });
+                    req.onsuccess = function() { resolve(req.result); };
+                    req.onerror = function() { reject(req.error); };
+                });
+            });
+        },
+        getSyncQueueCount: function() {
+            var self = this;
+            return self.open().then(function() {
+                return new Promise(function(resolve, reject) {
+                    var tx = self.db.transaction('sync_queue', 'readonly');
+                    var req = tx.objectStore('sync_queue').count();
+                    req.onsuccess = function() { resolve(req.result); };
+                    req.onerror = function() { reject(req.error); };
+                });
+            });
+        },
+        getSyncQueue: function() {
+            var self = this;
+            return self.open().then(function() {
+                return new Promise(function(resolve, reject) {
+                    var tx = self.db.transaction('sync_queue', 'readonly');
+                    var req = tx.objectStore('sync_queue').getAll();
+                    req.onsuccess = function() { resolve(req.result || []); };
+                    req.onerror = function() { reject(req.error); };
+                });
+            });
+        },
+        removeFromSyncQueue: function(id) {
+            var self = this;
+            return self.open().then(function() {
+                return new Promise(function(resolve, reject) {
+                    var tx = self.db.transaction('sync_queue', 'readwrite');
+                    tx.objectStore('sync_queue').delete(id);
+                    tx.oncomplete = function() { resolve(); };
+                    tx.onerror = function() { reject(tx.error); };
+                });
+            });
+        }
+    };
+
+    // ==================== المتغيرات العامة ====================
+    var avatarColors = [{ bg: '#fff3e0', text: '#e65100' },{ bg: '#e8f5e9', text: '#1b5e20' },{ bg: '#e3f2fd', text: '#0d47a1' },{ bg: '#f3e5f5', text: '#4a148c' }];
+    var currentTab = 'home';
+    var currentClientId = null;
+    var modalTxType = 'debit';
+    var txType = 'debit';
+    var SYNC_API_URL = 'https://ws-ok.ct.ws/wacel1/sync.php';
+
+    // ==================== تهيئة ====================
+    document.addEventListener('DOMContentLoaded', function() {
+        updateOnlineStatus();
+        setTodayDate();
+        loadAllData();
+        setupTabs();
+        checkPendingSync();
+    });
+
+    function updateOnlineStatus() {
+        var bar = document.getElementById('statusBar'), dot = document.getElementById('statusDot'), text = document.getElementById('statusText'), sub = document.getElementById('headerSub');
+        if (navigator.onLine) { bar.classList.add('online'); dot.classList.add('online'); text.textContent = 'متصل بالإنترنت'; sub.textContent = 'متصل'; }
+        else { bar.classList.remove('online'); dot.classList.remove('online'); text.textContent = 'غير متصل - بيانات محلية'; sub.textContent = 'وضع Offline'; }
+    }
+
+    function setTodayDate() {
+        var today = new Date().toISOString().split('T')[0];
+        if (document.getElementById('txDate')) document.getElementById('txDate').value = today;
+        if (document.getElementById('modalTxDate')) document.getElementById('modalTxDate').value = today;
+    }
+
+    function setupTabs() {
+        document.querySelectorAll('.tab').forEach(function(tab) {
+            tab.addEventListener('click', function() {
+                document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+                this.classList.add('active');
+                currentTab = this.dataset.tab;
+                document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
+                document.getElementById('tab-' + currentTab).classList.add('active');
+                document.getElementById('clientPage').style.display = 'none';
+                document.getElementById('mainTabs').style.display = 'flex';
+                if (currentTab === 'addTx') loadPartnersList();
+                if (currentTab === 'home') loadAllData();
+            });
+        });
+    }
+
+    function loadAllData() { loadPartnersList(); renderClientsList(); updateStats(); checkPendingSync(); }
+
+    function loadPartnersList() {
+        var select = document.getElementById('txPartner');
+        if (!select) return;
+        select.innerHTML = '<option value="">اختر العميل...</option>';
+        localDB.getPartners().then(function(partners) {
+            if (partners && partners.length > 0) { partners.forEach(function(p) { var o = document.createElement('option'); o.value = p.id; o.textContent = p.name; select.appendChild(o); }); }
+        }).catch(function() {});
+    }
+
+    function renderClientsList() {
+        var list = document.getElementById('clientsList');
+        localDB.getPartners().then(function(partners) {
+            if (!partners || partners.length === 0) { list.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><div>لا يوجد عملاء بعد</div></div>'; return; }
+            var html = '';
+            partners.forEach(function(p, i) {
+                var c = avatarColors[i % 4], bal = p.balance || 0, bc = bal > 0 ? 'positive' : (bal < 0 ? 'negative' : ''), bl = bal > 0 ? 'له' : (bal < 0 ? 'عليه' : '—');
+                html += '<div class="client-card" onclick="openClient(' + p.id + ')"><div class="client-avatar" style="background:' + c.bg + ';color:' + c.text + ';">' + (p.name||'?')[0] + '</div><div class="client-info"><div class="client-name">' + (p.name||'') + '</div><div class="client-meta">' + (p.phone?'📱 '+p.phone+' · ':'') + (p.transaction_count||0) + ' معاملة</div></div><div class="client-balance"><div class="balance-amount ' + bc + '">' + Math.abs(bal).toLocaleString('ar-SA') + '</div><div class="balance-label">' + bl + '</div></div></div>';
+            });
+            list.innerHTML = html;
+        }).catch(function() { list.innerHTML = '<div class="empty-state"><div class="empty-icon">❌</div><div>خطأ في تحميل البيانات</div></div>'; });
+    }
+
+    function updateStats() {
+        localDB.getPartners().then(function(p) {
+            var tc = p ? p.length : 0, td = 0, tcr = 0;
+            if (p) { p.forEach(function(x) { var b = x.balance || 0; if (b < 0) td += Math.abs(b); else tcr += b; }); }
+            document.getElementById('statClients').textContent = tc;
+            document.getElementById('statDebit').textContent = td.toLocaleString('ar-SA');
+            document.getElementById('statCredit').textContent = tcr.toLocaleString('ar-SA');
+        });
+    }
+
+    // ==================== addPartner ====================
+    async function addPartner() {
+        var name = document.getElementById('partnerName').value.trim();
+        var phone = document.getElementById('partnerPhone').value.trim();
+        
+        if (!name) { showToast('الرجاء إدخال اسم العميل', 'error'); return; }
+        
+        var btn = document.querySelector('#tab-addPartner .btn-success');
+        var originalText = btn.textContent;
+        btn.textContent = '⏳ جاري الحفظ...'; btn.disabled = true;
+        
+        var uid = parseInt(localStorage.getItem('offline_user_id') || '0');
+        
+        if (!navigator.onLine) {
+            try {
+                var result = await localDB.addPartner({ name: name, phone: phone, type: 'local', user_id: uid });
+                showToast('✅ تم حفظ العميل محلياً', 'success');
+                document.getElementById('partnerName').value = '';
+                document.getElementById('partnerPhone').value = '';
+                loadAllData();
+                if (result && result.id) setTimeout(function() { openClient(result.id); }, 500);
+            } catch (e) { showToast('❌ خطأ في الحفظ المحلي', 'error'); }
+            btn.textContent = originalText; btn.disabled = false;
+            return;
+        }
+        
+        try {
+            var fd = new FormData();
+            fd.append('action', 'add_partner'); fd.append('name', name); fd.append('phone', phone); fd.append('type', 'local');
+            var r = await fetch('index.php', { method: 'POST', body: fd });
+            var d = await r.json();
+            if (d.success) {
+                showToast(d.message || '✅ تم إضافة العميل', 'success');
+                document.getElementById('partnerName').value = '';
+                document.getElementById('partnerPhone').value = '';
+                loadAllData();
+                if (d.id) setTimeout(function() { window.location.href = 'client.php?id=' + d.id; }, 500);
+            } else { showToast(d.message, 'error'); }
+        } catch (e) {
+            try {
+                var result = await localDB.addPartner({ name: name, phone: phone, type: 'local', user_id: uid });
+                showToast('⚠️ فشل الاتصال - تم الحفظ محلياً', 'warning');
+                document.getElementById('partnerName').value = '';
+                document.getElementById('partnerPhone').value = '';
+                loadAllData();
+                if (result && result.id) setTimeout(function() { openClient(result.id); }, 500);
+            } catch (e2) { showToast('❌ خطأ في الحفظ', 'error'); }
+        }
+        btn.textContent = originalText; btn.disabled = false;
+    }
+
+    // ==================== saveTransaction ====================
+    function setTxType(type, btn) {
+        txType = type;
+        document.querySelectorAll('#tab-addTx .type-btn').forEach(function(b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+    }
+    
+    function setModalTxType(type, btn) {
+        modalTxType = type;
+        document.querySelectorAll('#txModal .type-btn').forEach(function(b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+    }
+
+    async function saveTransaction() {
+        var partnerId = document.getElementById('txPartner').value;
+        var amount = parseFloat(document.getElementById('txAmount').value);
+        var details = document.getElementById('txDetails').value.trim();
+        var date = document.getElementById('txDate').value;
+        
+        if (!partnerId) { showToast('الرجاء اختيار عميل', 'error'); return; }
+        if (!amount || amount <= 0) { showToast('الرجاء إدخال المبلغ', 'error'); return; }
+        
+        var btn = document.querySelector('#tab-addTx .btn-save');
+        var originalText = btn.textContent;
+        btn.textContent = '⏳ جاري الحفظ...'; btn.disabled = true;
+        
+        var uid = parseInt(localStorage.getItem('offline_user_id') || '0');
+        var txData = {
+            partner_id: parseInt(partnerId), amount: amount, details: details,
+            date: date, transaction_type: txType, currency_type: 'local', user_id: uid
+        };
+        
+        if (!navigator.onLine) {
+            try {
+                await localDB.addTransaction(txData);
+                showToast('✅ تم حفظ المعاملة محلياً', 'success');
+                document.getElementById('txAmount').value = '';
+                document.getElementById('txDetails').value = '';
+                loadAllData(); checkPendingSync();
+                setTimeout(function() { openClient(parseInt(partnerId)); }, 500);
+            } catch (e) { showToast('❌ خطأ في الحفظ المحلي', 'error'); }
+            btn.textContent = originalText; btn.disabled = false;
+            return;
+        }
+        
+        try {
+            var fd = new FormData();
+            fd.append('action', 'add'); fd.append('partner_id', partnerId); fd.append('amount', amount);
+            fd.append('details', details); fd.append('date', date); fd.append('type', txType); fd.append('currency', 'local'); fd.append('quantity', 0);
+            var r = await fetch('add_transaction.php', { method: 'POST', body: fd });
+            var d = await r.json();
+            if (d.success) {
+                showToast(d.message || '✅ تم حفظ المعاملة', 'success');
+                document.getElementById('txAmount').value = '';
+                document.getElementById('txDetails').value = '';
+                loadAllData();
+                setTimeout(function() { openClient(parseInt(partnerId)); }, 500);
+            } else { showToast(d.message, 'error'); }
+        } catch (e) {
+            try {
+                await localDB.addTransaction(txData);
+                showToast('⚠️ فشل الاتصال - تم الحفظ محلياً', 'warning');
+                document.getElementById('txAmount').value = '';
+                document.getElementById('txDetails').value = '';
+                loadAllData(); checkPendingSync();
+                setTimeout(function() { openClient(parseInt(partnerId)); }, 500);
+            } catch (e2) { showToast('❌ خطأ في الحفظ', 'error'); }
+        }
+        btn.textContent = originalText; btn.disabled = false;
+    }
+
+    // ==================== saveClientTransaction ====================
+    async function saveClientTransaction() {
+        var amount = parseFloat(document.getElementById('modalTxAmount').value);
+        var details = document.getElementById('modalTxDetails').value.trim();
+        var date = document.getElementById('modalTxDate').value;
+        
+        if (!amount || amount <= 0) { showToast('الرجاء إدخال المبلغ', 'error'); return; }
+        if (!currentClientId) { showToast('العميل غير محدد', 'error'); return; }
+        
+        var btn = document.querySelector('#txModal .btn-save');
+        btn.textContent = '⏳ جاري الحفظ...'; btn.disabled = true;
+        
+        var uid = parseInt(localStorage.getItem('offline_user_id') || '0');
+        
+        try {
+            await localDB.addTransaction({
+                partner_id: currentClientId, amount: amount, details: details,
+                date: date, transaction_type: modalTxType, currency_type: 'local', user_id: uid
+            });
+            showToast('✅ تم حفظ المعاملة', 'success');
+            document.getElementById('txModal').classList.add('hidden');
+            openClient(currentClientId); checkPendingSync();
+        } catch (e) { showToast('❌ خطأ في الحفظ', 'error'); }
+        btn.textContent = '💾 حفظ'; btn.disabled = false;
+    }
+
+    // ==================== openClient ====================
+    function openClient(clientId) {
+        currentClientId = clientId;
+        localDB.getPartnerById(clientId).then(function(client) {
+            if (!client) { showToast('العميل غير موجود', 'error'); return; }
+            document.getElementById('mainTabs').style.display = 'none';
+            document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
+            document.getElementById('clientPage').style.display = 'block';
+            localDB.getTransactions(clientId).then(function(txs) {
+                var bal = 0;
+                if (txs) { txs.forEach(function(t) { bal += t.transaction_type === 'credit' ? parseFloat(t.amount) : -parseFloat(t.amount); }); }
+                document.getElementById('clientHeader').innerHTML = '<h2>👤 ' + (client.name||'') + '</h2><div class="big-balance" style="color:' + (bal>=0?'var(--success)':'var(--danger)') + '">' + Math.abs(bal).toLocaleString('ar-SA') + '</div><div>' + (bal>=0?'له':'عليه') + ' | ' + (client.phone||'لا يوجد هاتف') + '</div>';
+                var tl = document.getElementById('clientTxList');
+                if (!txs || txs.length === 0) { tl.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><div>لا توجد معاملات</div></div>'; }
+                else {
+                    txs.sort(function(a,b) { return new Date(b.date) - new Date(a.date); });
+                    var h = '';
+                    txs.forEach(function(t) { var isD = t.transaction_type === 'debit'; h += '<div class="tx-item"><div class="tx-icon ' + t.transaction_type + '">' + (isD?'📤':'📥') + '</div><div class="tx-info"><div class="tx-details">' + (t.details||'بدون تفاصيل') + '</div><div class="tx-date">' + t.date + '</div></div><div class="tx-amount ' + t.transaction_type + '">' + (isD?'-':'+') + parseFloat(t.amount).toLocaleString('ar-SA') + '</div></div>'; });
+                    tl.innerHTML = h;
+                }
+                window.scrollTo(0,0);
+            });
+        });
+    }
+
+    function goBack() {
+        document.getElementById('clientPage').style.display = 'none'; document.getElementById('mainTabs').style.display = 'flex';
+        document.getElementById('tab-home').classList.add('active');
+        document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+        document.querySelector('.tab[data-tab="home"]').classList.add('active');
+        currentClientId = null; currentTab = 'home'; loadAllData();
+    }
+
+    function showAddTxForClient() {
+        if (!currentClientId) return;
+        document.getElementById('modalTxAmount').value = ''; document.getElementById('modalTxDetails').value = '';
+        document.getElementById('modalTxDate').value = new Date().toISOString().split('T')[0];
+        modalTxType = 'debit';
+        document.querySelectorAll('#txModal .type-btn').forEach(function(b) { b.classList.remove('active'); });
+        document.querySelector('#txModal .type-btn.debit').classList.add('active');
+        document.getElementById('txModal').classList.remove('hidden');
+    }
+
+    function closeModal(e) { if (e && e.target !== document.getElementById('txModal')) return; document.getElementById('txModal').classList.add('hidden'); }
+
+    // ==================== المزامنة ====================
+    function checkPendingSync() {
+        localDB.getSyncQueueCount().then(function(c) {
+            document.getElementById('syncBar').classList.toggle('show', c > 0);
+            document.getElementById('syncCount').textContent = c;
+            document.getElementById('queueBadge').style.display = c > 0 ? 'inline' : 'none';
+            document.getElementById('queueBadge').textContent = c;
+        }).catch(function() {});
+    }
+
+    function showToast(msg, type) {
+        var existing = document.querySelector('.toast'); if (existing) existing.remove();
+        var t = document.createElement('div'); t.className = 'toast ' + (type||'success'); t.textContent = msg;
+        document.body.appendChild(t); setTimeout(function() { t.remove(); }, 2500);
+    }
+
+    function syncNow() {
+        if (!navigator.onLine) { showToast('⚠️ لا يوجد اتصال بالإنترنت', 'error'); return; }
+        showToast('🔄 جاري المزامنة...', 'warning');
+        localDB.getSyncQueue().then(function(queue) {
+            if (!queue || queue.length === 0) { showToast('✅ جميع البيانات محدثة', 'success'); updateSyncBar(0); return; }
+            var synced = 0, promises = [];
+            queue.forEach(function(item, index) {
+                promises.push(new Promise(function(resolve) {
+                    setTimeout(function() {
+                        var fd = new FormData(); fd.append('action', item.action); fd.append('data', JSON.stringify(item.data));
+                        fetch(SYNC_API_URL, { method: 'POST', body: fd })
+                        .then(function(r) { return r.json(); })
+                        .then(function(result) {
+                            if (result.success) { synced++; return localDB.removeFromSyncQueue(item.id); }
+                            resolve();
+                        }).catch(function() { resolve(); });
+                    }, index * 400);
+                }));
+            });
+            Promise.all(promises).then(function() {
+                if (synced > 0) { showToast('✅ تمت مزامنة ' + synced + ' عملية', 'success'); }
+                checkPendingSync();
+                if (navigator.onLine && synced > 0) {
+                    setTimeout(function() { if (confirm('تمت المزامنة. الانتقال للموقع؟')) window.location.href = 'https://ws-ok.ct.ws/wacel1/index.php'; }, 1000);
+                }
+            });
+        }).catch(function() { showToast('❌ فشلت المزامنة', 'error'); });
+    }
+
+    function updateSyncBar(c) {
+        document.getElementById('syncBar').classList.toggle('show', c > 0);
+        document.getElementById('syncCount').textContent = c;
+        document.getElementById('queueBadge').style.display = c > 0 ? 'inline' : 'none';
+        document.getElementById('queueBadge').textContent = c;
+    }
+
+    // ==================== الأحداث ====================
+    window.addEventListener('online', function() { updateOnlineStatus(); showToast('🟢 تم استعادة الاتصال', 'success'); setTimeout(syncNow, 2000); });
+    window.addEventListener('offline', updateOnlineStatus);
+    document.addEventListener('keydown', function(e) { if (e.key === 'Escape') { closeModal(); if (currentClientId) goBack(); } });
+    setInterval(updateOnlineStatus, 10000);
+    setInterval(checkPendingSync, 15000);
+    setInterval(function() { if (navigator.onLine) { localDB.getSyncQueueCount().then(function(c) { if (c > 0) syncNow(); }); } }, 30000);
+    </script>
+</body>
+</html>

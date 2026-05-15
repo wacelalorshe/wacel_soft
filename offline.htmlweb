@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>دفتر الحسابات - بدون إنترنت</title>
+    <style>
+        :root {
+            --bg: #0f0f1a;
+            --surface: #1a1a2e;
+            --primary: #6c5ce7;
+            --success: #00d68f;
+            --danger: #ff6b6b;
+            --text: #fff;
+            --text-secondary: #8888a0;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100dvh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            text-align: center;
+            max-width: 400px;
+            background: var(--surface);
+            border-radius: 20px;
+            padding: 30px 24px;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+        .icon { font-size: 70px; margin-bottom: 16px; animation: float 3s ease infinite; }
+        @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-15px)} }
+        h1 { font-size: 20px; font-weight: 800; margin-bottom: 8px; }
+        p { color: var(--text-secondary); font-size: 13px; margin-bottom: 20px; line-height: 1.6; }
+        .status {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 12px;
+            margin-bottom: 20px;
+            background: rgba(255,107,107,0.15);
+            color: var(--danger);
+        }
+        .status.online { background: rgba(0,214,143,0.15); color: var(--success); }
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 14px;
+            margin: 8px 0;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 14px;
+            text-decoration: none;
+            cursor: pointer;
+            border: none;
+            font-family: inherit;
+            color: #fff;
+            transition: all 0.2s;
+        }
+        .btn:active { transform: scale(0.96); }
+        .btn-primary { background: var(--primary); }
+        .btn-success { background: var(--success); }
+        .btn-outline {
+            background: transparent;
+            border: 1px solid rgba(255,255,255,0.1);
+            color: var(--text-secondary);
+        }
+        .sync-info { margin-top: 16px; font-size: 11px; color: var(--text-secondary); }
+        .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-left: 6px; }
+        .dot.online { background: var(--success); }
+        .dot.offline { background: var(--danger); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">📡</div>
+        <h1>أنت غير متصل بالإنترنت</h1>
+        <p>لا تقلق! يمكنك متابعة استخدام التطبيق. جميع بياناتك تُحفظ محلياً وتُزامن تلقائياً عند عودة الاتصال.</p>
+        
+        <div id="statusBadge" class="status">
+            <span class="dot offline"></span> غير متصل
+        </div>
+        
+        <a href="index.php" class="btn btn-primary">🏠 الذهاب للرئيسية</a>
+        <a href="add_partner.php" class="btn btn-success">👤 إضافة عميل جديد</a>
+        <a href="add_transaction.php" class="btn btn-outline">💰 إضافة معاملة</a>
+        
+        <div class="sync-info" id="syncInfo">
+            سيتم مزامنة جميع العمليات عند عودة الاتصال
+        </div>
+    </div>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').catch(() => {});
+        }
+        
+        function updateStatus() {
+            const badge = document.getElementById('statusBadge');
+            const dot = badge.querySelector('.dot');
+            if (navigator.onLine) {
+                badge.classList.add('online');
+                dot.classList.add('online');
+                dot.classList.remove('offline');
+                badge.innerHTML = '<span class="dot online"></span> متصل';
+            } else {
+                badge.classList.remove('online');
+                dot.classList.add('offline');
+                dot.classList.remove('online');
+                badge.innerHTML = '<span class="dot offline"></span> غير متصل';
+            }
+        }
+        
+        window.addEventListener('online', updateStatus);
+        window.addEventListener('offline', updateStatus);
+        updateStatus();
+    </script>
+</body>
+</html>
